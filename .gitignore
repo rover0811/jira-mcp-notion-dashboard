@@ -11,3 +11,8 @@ wheels/
 .env
 .idea
 tmp
+
+# Local environment variables
+.env
+env.json
+

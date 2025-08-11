@@ -1,0 +1,62 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: A serverless application with Atlassian OAuth2 flow and Jira ticket creation.
+
+Globals:
+  Function:
+    Timeout: 20
+    Runtime: python3.11
+    CodeUri: ./
+    Environment:
+      Variables:
+        ATLASSIAN_SSM_PATH: /jira-dashboard/
+        # Note: ANTHROPIC_API_KEY should be configured securely, e.g., via Secrets Manager or Parameter Store
+        # ANTHROPIC_API_KEY: 'Your-Anthropic-API-Key'
+
+Resources:
+  OAuthStartFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: ouath_handler.start
+      Environment:
+        Variables:
+          ATLASSIAN_REDIRECT_URI: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/callback"
+      Events:
+        OAuthStart:
+          Type: Api
+          Properties:
+            Path: /login
+            Method: get
+
+  OAuthCallbackFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: ouath_handler.callback
+      Environment:
+        Variables:
+          ATLASSIAN_REDIRECT_URI: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/callback"
+      Events:
+        OAuthCallback:
+          Type: Api
+          Properties:
+            Path: /callback
+            Method: get
+
+  CreateJiraTicketFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: main.lambda_handler
+      Environment:
+        Variables:
+          ATLASSIAN_MCP_SERVER_URL: "https://mcp.atlassian.com/v1/sse"
+      Events:
+        CreateJiraTicketApi:
+          Type: Api
+          Properties:
+            Path: /create-jira-ticket
+            Method: post
+
+Outputs:
+  ApiUrl:
+    Description: "API Gateway endpoint URL for Prod stage"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
